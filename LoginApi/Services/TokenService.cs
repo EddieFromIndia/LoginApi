@@ -39,7 +39,7 @@ namespace LoginApi.Services
 
         public static int DecodeToken(string? token)
         {
-            JwtSecurityToken? jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+            JwtSecurityToken? jwtToken = new(token);
             int id = int.Parse(jwtToken.Claims.First(claim => claim.Type == ClaimTypes.NameIdentifier).Value);
 
             return id;
@@ -47,7 +47,7 @@ namespace LoginApi.Services
 
         public static int DecodeToken(string? token, out bool hasTokenExpired)
         {
-            JwtSecurityToken? jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+            JwtSecurityToken? jwtToken = new(token);
             int id = int.Parse(jwtToken.Claims.First(claim => claim.Type == ClaimTypes.NameIdentifier).Value);
 
             hasTokenExpired = jwtToken?.ValidTo < DateTime.UtcNow;

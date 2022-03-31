@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LoginApi.Controllers
 {
+    [Route("api")]
+    [ApiController]
     public class ForgotController : Controller
     {
         #region Private Members
@@ -42,7 +44,7 @@ namespace LoginApi.Controllers
                 return BadRequest("Invalid Link!");
             }
 
-            UserModel? user = db.Users.Where(u => u.Email == resetToken.Email).FirstOrDefault();
+            User? user = db.Users.Where(u => u.Email == resetToken.Email).FirstOrDefault();
 
             if (user is null || password != passwordConfirm)
             {
