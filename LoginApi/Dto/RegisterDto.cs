@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace LoginApi.Models
+namespace LoginApi.DTO
 {
     public class RegisterDto
     {

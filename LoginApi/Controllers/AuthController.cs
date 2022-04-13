@@ -1,18 +1,18 @@
 ﻿using LoginApi.Data;
+using LoginApi.DTO;
 using LoginApi.Models;
 using LoginApi.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LoginApi.Controllers
 {
-    [Route("api")]
     [ApiController]
+    [Route("api")]
     public class AuthController : Controller
     {
         #region Private Members
-        private readonly IConfiguration configuration;
-        private readonly ApplicationDbContext db;
+        private IConfiguration configuration;
+        private ApplicationDbContext db;
         #endregion
 
         public AuthController(IConfiguration configuration, ApplicationDbContext db)
@@ -24,12 +24,6 @@ namespace LoginApi.Controllers
         [HttpPost("register")]
         public IActionResult Register(RegisterDto dto)
         {
-            System.Diagnostics.Debug.WriteLine("Inside Register");
-            if (dto is null)
-            {
-                return BadRequest("Invalid request!");
-            }
-
             if (dto.Password != dto.PasswordConfirm)
             {
                 return Unauthorized("Passwords do not match!");
@@ -43,42 +37,39 @@ namespace LoginApi.Controllers
                 Password = HashService.HashPassword(dto.Password)
             };
 
-            // Save user to database
             db.Users.Add(user);
             db.SaveChanges();
 
-            // Create a User Record without the password to send to the view
             return Ok(user);
         }
 
-        [AllowAnonymous]
         [HttpPost("login")]
         public IActionResult Login(LoginDto dto)
         {
-            if (dto is null)
-            {
-                return BadRequest("Invalid request!");
-            }
+            User? user = db.Users.Where(u => u.Email == dto.Email).FirstOrDefault();
 
-            //Fetching the user from database having the same Email address
-            User? targetUser = db.Users.Where(u => u.Email == dto.Email).FirstOrDefault();
-
-            if (HashService.HashPassword(dto.Password) != (targetUser?.Password))
+            if (user == null)
             {
                 return Unauthorized("Invalid credentials!");
             }
 
-            string accessToken = TokenService.CreateAccessToken(targetUser.Id, configuration.GetSection("Jwt:AccessToken").Value);
-            string refreshToken = TokenService.CreateRefreshToken(targetUser.Id, configuration.GetSection("Jwt:RefreshToken").Value);
+            if (HashService.HashPassword(dto.Password) != user.Password)
+            {
+                return Unauthorized("Invalid credentials!");
+            }
+
+            string accessToken = TokenService.CreateAccessToken(user.Id, configuration.GetSection("JWT:AccessKey").Value);
+            string refreshToken = TokenService.CreateRefreshToken(user.Id, configuration.GetSection("JWT:RefreshKey").Value);
 
             CookieOptions cookieOptions = new();
             cookieOptions.HttpOnly = true;
             Response.Cookies.Append("refresh_token", refreshToken, cookieOptions);
+
             UserToken token = new()
             {
-                UserId = targetUser.Id,
+                UserId = user.Id,
                 Token = refreshToken,
-                ExpiresAt = DateTime.Now.AddDays(7)
+                ExpiredAt = DateTime.Now.AddDays(7)
             };
 
             db.UserTokens.Add(token);
@@ -101,13 +92,20 @@ namespace LoginApi.Controllers
             }
 
             string accessToken = authorizationHeader[7..];
+
             int id = TokenService.DecodeToken(accessToken, out bool hasTokenExpired);
+
             if (hasTokenExpired)
             {
                 return Unauthorized("Unauthenticated!");
             }
 
             User? user = db.Users.Where(u => u.Id == id).FirstOrDefault();
+
+            if (user is null)
+            {
+                return Unauthorized("Unauthenticated!");
+            }
 
             return Ok(user);
         }
@@ -121,16 +119,21 @@ namespace LoginApi.Controllers
             }
 
             string? refreshToken = Request.Cookies["refresh_token"];
+
             int id = TokenService.DecodeToken(refreshToken, out bool hasTokenExpired);
 
-            UserToken? token = db.UserTokens.Where(t => t.Token == refreshToken && t.Id == id).FirstOrDefault();
+            if (!db.UserTokens.Where(u => u.Id == id && u.Token == refreshToken && u.ExpiredAt > DateTime.Now).Any())
+            {
+                return Unauthorized("Unauthenticated!");
+            }
 
             if (hasTokenExpired)
             {
                 return Unauthorized("Unauthenticated!");
             }
 
-            string accessToken = TokenService.CreateAccessToken(id, configuration.GetSection("Jwt:AccessToken").Value);
+            string accessToken = TokenService.CreateAccessToken(id, configuration.GetSection("JWT:AccessKey").Value);
+
             return Ok(new
             {
                 token = accessToken
@@ -141,13 +144,13 @@ namespace LoginApi.Controllers
         public IActionResult Logout()
         {
             string? refreshToken = Request.Cookies["refresh_token"];
+
             if (refreshToken is null)
             {
                 return Ok("Already Logged Out!");
             }
 
-            int id = TokenService.DecodeToken(refreshToken);
-            db.UserTokens.RemoveRange(db.UserTokens.Where(t => t.Id == id));
+            db.UserTokens.Remove(db.UserTokens.Where(u => u.Token == refreshToken).First());
             db.SaveChanges();
 
             Response.Cookies.Delete("refresh_token");

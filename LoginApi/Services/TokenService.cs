@@ -11,7 +11,7 @@ namespace LoginApi.Services
         {
             List<Claim> claims = new()
             {
-                new Claim(ClaimTypes.NameIdentifier, id.ToString())
+                new Claim(ClaimTypes.NameIdentifier, id.ToString()),
             };
 
             SymmetricSecurityKey? key = new(Encoding.UTF8.GetBytes(accessKey));
@@ -26,7 +26,7 @@ namespace LoginApi.Services
         {
             List<Claim> claims = new()
             {
-                new Claim(ClaimTypes.NameIdentifier, id.ToString())
+                new Claim(ClaimTypes.NameIdentifier, id.ToString()),
             };
 
             SymmetricSecurityKey? key = new(Encoding.UTF8.GetBytes(refreshKey));
@@ -37,20 +37,12 @@ namespace LoginApi.Services
             return jwt;
         }
 
-        public static int DecodeToken(string? token)
-        {
-            JwtSecurityToken? jwtToken = new(token);
-            int id = int.Parse(jwtToken.Claims.First(claim => claim.Type == ClaimTypes.NameIdentifier).Value);
-
-            return id;
-        }
-
         public static int DecodeToken(string? token, out bool hasTokenExpired)
         {
             JwtSecurityToken? jwtToken = new(token);
-            int id = int.Parse(jwtToken.Claims.First(claim => claim.Type == ClaimTypes.NameIdentifier).Value);
+            int id = int.Parse(jwtToken.Claims.First(claim => ClaimTypes.NameIdentifier == claim.Type).Value);
 
-            hasTokenExpired = jwtToken?.ValidTo < DateTime.UtcNow;
+            hasTokenExpired = jwtToken.ValidTo < DateTime.UtcNow;
             return id;
         }
     }

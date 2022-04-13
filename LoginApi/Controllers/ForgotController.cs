@@ -1,17 +1,16 @@
 ﻿using LoginApi.Data;
+using LoginApi.DTO;
 using LoginApi.Models;
 using LoginApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LoginApi.Controllers
 {
-    [Route("api")]
     [ApiController]
+    [Route("api")]
     public class ForgotController : Controller
     {
-        #region Private Members
-        private readonly ApplicationDbContext db;
-        #endregion
+        private ApplicationDbContext db;
 
         public ForgotController(ApplicationDbContext db)
         {
@@ -19,43 +18,51 @@ namespace LoginApi.Controllers
         }
 
         [HttpPost("forgot")]
-        public IActionResult Forgot(string email)
+        public IActionResult Forgot(ForgotDto dto)
         {
             ResetToken resetToken = new()
             {
-                Email = email,
+                Email = dto.Email,
                 Token = Guid.NewGuid().ToString()
             };
 
-            // db.ResetTokens.RemoveRange(db.ResetTokens.Where(t => t.Email == resetToken.Email));
-            db.Add(resetToken);
+            db.ResetTokens.Add(resetToken);
             db.SaveChanges();
 
             MailService.SendPasswordResetMailAsync(resetToken);
-            return Ok("Reset link emailed!");
+            return Ok(new
+            {
+                message = "Reset link emailed!"
+            });
         }
 
         [HttpPost("reset")]
-        public IActionResult Reset(string token, string password, string passwordConfirm)
+        public IActionResult Reset(ResetDto dto)
         {
-            ResetToken? resetToken = db.ResetTokens.Where(t => t.Token == token).FirstOrDefault();
+            if (dto.Password != dto.PasswordConfirm)
+            {
+                return Unauthorized("Passwords do not match!");
+            }
+
+            ResetToken? resetToken = db.ResetTokens.Where(t => t.Token == dto.Token).FirstOrDefault();
             if (resetToken is null)
             {
-                return BadRequest("Invalid Link!");
+                return BadRequest("Invalid link!");
             }
 
             User? user = db.Users.Where(u => u.Email == resetToken.Email).FirstOrDefault();
-
-            if (user is null || password != passwordConfirm)
+            if (user is null)
             {
-                return BadRequest("Invalid Link!");
+                return BadRequest("User not found!");
             }
 
-            db.Users.Where(u => u.Email == user.Email).FirstOrDefault().Password = HashService.HashPassword(password);
-
+            db.Users.Where(u => u.Email == user.Email).FirstOrDefault().Password = HashService.HashPassword(dto.Password);
             db.SaveChanges();
 
-            return Ok("Password Changed Successfully!");
+            return Ok(new
+            {
+                message = "Password changed successfully!"
+            });
         }
     }
 }

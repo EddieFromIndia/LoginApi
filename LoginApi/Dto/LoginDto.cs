@@ -1,4 +1,4 @@
-﻿namespace LoginApi.Models
+﻿namespace LoginApi.DTO
 {
     public class LoginDto
     {
