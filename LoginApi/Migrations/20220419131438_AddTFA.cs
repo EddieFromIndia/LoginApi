@@ -4,23 +4,23 @@
 
 namespace LoginApi.Migrations
 {
-    public partial class UpdateDatabase : Migration
+    public partial class AddTFA : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "UserId",
-                table: "UserTokens",
-                type: "int",
+            migrationBuilder.AddColumn<string>(
+                name: "TfaSecret",
+                table: "Users",
+                type: "nvarchar(max)",
                 nullable: false,
-                defaultValue: 0);
+                defaultValue: "");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "UserId",
-                table: "UserTokens");
+                name: "TfaSecret",
+                table: "Users");
         }
     }
 }

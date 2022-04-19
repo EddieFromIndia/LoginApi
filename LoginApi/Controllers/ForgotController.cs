@@ -56,7 +56,7 @@ namespace LoginApi.Controllers
                 return BadRequest("User not found!");
             }
 
-            db.Users.Where(u => u.Email == user.Email).FirstOrDefault().Password = HashService.HashPassword(dto.Password);
+            db.Users.Where(u => u.Email == user.Email).FirstOrDefault()!.Password = HashService.HashPassword(dto.Password);
             db.SaveChanges();
 
             return Ok(new
