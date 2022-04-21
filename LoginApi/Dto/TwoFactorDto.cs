@@ -6,7 +6,7 @@ namespace LoginApi.Dto
     {
         [JsonPropertyName("id")]
         public int Id { get; set; } = default!;
-        [JsonPropertyName("email")]
+        [JsonPropertyName("secret")]
         public string Secret { get; set; } = default!;
         [JsonPropertyName("code")]
         public string Code { get; set; } = default!;
